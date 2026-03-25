@@ -17,6 +17,7 @@
 //! ```
 
 use rand::Rng;
+use std::collections::BTreeMap;
 use std::fmt;
 
 /// Modifier applied to a dice roll (advantage, disadvantage, or none).
@@ -233,6 +234,49 @@ pub fn format_rolls(rolls: &[Vec<u32>]) -> String {
         })
         .collect::<Vec<_>>()
         .join(" + ")
+}
+
+/// Run a Monte Carlo simulation and return the count of each result value.
+pub fn compute_distribution(expr: &DiceExpr, sims: u64, rng: &mut impl Rng) -> BTreeMap<i64, u64> {
+    let mut counts = BTreeMap::new();
+    for _ in 0..sims {
+        *counts.entry(roll_value(expr, rng)).or_insert(0) += 1;
+    }
+    counts
+}
+
+/// Render a probability distribution histogram as a string.
+pub fn render_distribution(expr: &DiceExpr, counts: &BTreeMap<i64, u64>, sims: u64) -> String {
+    let mut out = format!("Distribution for {expr} ({sims} simulations):\n");
+
+    let (&min_val, &max_val) = match (counts.keys().next(), counts.keys().next_back()) {
+        (Some(lo), Some(hi)) => (lo, hi),
+        _ => return out,
+    };
+
+    let max_count = *counts.values().max().unwrap_or(&1);
+    let label_width = max_val.to_string().len().max(min_val.to_string().len());
+    const MAX_BAR: usize = 40;
+
+    for v in min_val..=max_val {
+        let count = counts.get(&v).copied().unwrap_or(0);
+        let pct = count as f64 / sims as f64 * 100.0;
+        let bar_len = if max_count > 0 {
+            (count as f64 / max_count as f64 * MAX_BAR as f64).round() as usize
+        } else {
+            0
+        };
+        let bar: String = "\u{2588}".repeat(bar_len);
+        out.push_str(&format!(
+            " {:>width$} | {:>5.1}% {}\n",
+            v,
+            pct,
+            bar,
+            width = label_width,
+        ));
+    }
+
+    out
 }
 
 /// Estimate the probability of rolling at least `target` using Monte Carlo simulation.
@@ -473,6 +517,59 @@ mod tests {
     #[test]
     fn format_rolls_multiple_groups() {
         assert_eq!(format_rolls(&[vec![3, 5], vec![2]]), "[3, 5] + [2]");
+    }
+
+    // ---- estimate_probability tests ----
+
+    // ---- compute_distribution tests ----
+
+    #[test]
+    fn distribution_d6_has_all_values() {
+        let expr = parse_expr("d6").unwrap();
+        let mut rng = seeded_rng();
+        let counts = compute_distribution(&expr, 100_000, &mut rng);
+        for v in 1..=6 {
+            assert!(counts.contains_key(&v), "missing value {v}");
+        }
+        assert!(!counts.contains_key(&0));
+        assert!(!counts.contains_key(&7));
+    }
+
+    #[test]
+    fn distribution_counts_sum_to_sims() {
+        let expr = parse_expr("2d6+3").unwrap();
+        let mut rng = seeded_rng();
+        let sims = 50_000;
+        let counts = compute_distribution(&expr, sims, &mut rng);
+        let total: u64 = counts.values().sum();
+        assert_eq!(total, sims);
+    }
+
+    // ---- render_distribution tests ----
+
+    #[test]
+    fn render_distribution_contains_all_values() {
+        let expr = parse_expr("d6").unwrap();
+        let mut counts = BTreeMap::new();
+        for v in 1..=6 {
+            counts.insert(v, 1000);
+        }
+        let output = render_distribution(&expr, &counts, 6000);
+        assert!(output.starts_with("Distribution for"));
+        for v in 1..=6 {
+            assert!(output.contains(&format!("{v} |")));
+        }
+    }
+
+    #[test]
+    fn render_distribution_percentages() {
+        let expr = parse_expr("d6").unwrap();
+        let mut counts = BTreeMap::new();
+        counts.insert(1, 500);
+        counts.insert(2, 500);
+        let output = render_distribution(&expr, &counts, 1000);
+        // Both values should show 50.0%
+        assert!(output.contains("50.0%"));
     }
 
     // ---- estimate_probability tests ----
