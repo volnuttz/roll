@@ -5,7 +5,7 @@ A command-line dice roller for tabletop RPGs. Supports standard dice notation, a
 ## Usage
 
 ```
-roll <expression> [--prob <target>] [--sims <n>]
+roll <expression> [--prob <target>] [--dist] [--sims <n>]
 ```
 
 ### Dice expressions
@@ -26,6 +26,16 @@ roll 2d10+4 --prob 15
 ```
 
 The number of simulations defaults to 1,000,000 and can be changed with `--sims`.
+
+### Distribution histogram
+
+Use `--dist` to see the full probability distribution as an ASCII histogram:
+
+```
+roll 2d6 --dist
+```
+
+This shows every possible result value with its percentage and a bar chart. Cannot be combined with `--prob`.
 
 ## Building
 
