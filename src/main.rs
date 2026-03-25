@@ -1,11 +1,17 @@
 use clap::Parser;
-use roll::{estimate_probability, parse_expr, roll_verbose};
+use roll::{
+    compute_distribution, estimate_probability, parse_expr, render_distribution, roll_verbose,
+};
 
 #[derive(Parser)]
 #[command(about = "Roll dice using TTRPG expressions like '2d10+4' or 'adv d20+5'")]
 struct Cli {
     /// Dice expression, e.g. "2d10+4", "adv d20+5", "dis d20-1"
     expression: Vec<String>,
+
+    /// Show full probability distribution as a histogram
+    #[arg(long, conflicts_with = "prob")]
+    dist: bool,
 
     /// Calculate probability of rolling at least this value (Monte Carlo)
     #[arg(long)]
@@ -30,7 +36,11 @@ fn main() {
 
     let mut rng = rand::thread_rng();
 
-    if let Some(target) = cli.prob {
+    if cli.dist {
+        let counts = compute_distribution(&expr, cli.sims, &mut rng);
+        let output = render_distribution(&expr, &counts, cli.sims);
+        print!("{output}");
+    } else if let Some(target) = cli.prob {
         let probability = estimate_probability(&expr, target, cli.sims, &mut rng);
         let hits = (probability * cli.sims as f64).round() as u64;
         println!(
