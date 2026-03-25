@@ -1,8 +1,25 @@
 [package]
-name = "roll"
+name = "roll-dice-cli"
 version = "0.1.0"
 edition = "2024"
+description = "A command-line dice roller for tabletop RPGs with advantage/disadvantage and probability estimation"
+license = "MIT"
+repository = "https://github.com/volnuttz/roll"
+readme = "README.md"
+keywords = ["dice", "rpg", "ttrpg", "roller", "cli"]
+categories = ["command-line-utilities", "games"]
+
+[[bin]]
+name = "roll"
+path = "src/main.rs"
+
+[lib]
+name = "roll"
+path = "src/lib.rs"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+rand = "0.8"
+
+[dev-dependencies]
 rand = "0.8"
