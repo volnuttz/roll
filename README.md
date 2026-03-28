@@ -1,41 +1,120 @@
 # roll
 
-A command-line dice roller for tabletop RPGs. Supports standard dice notation, advantage/disadvantage, and probability estimation via Monte Carlo simulation.
+A command-line dice roller for tabletop RPGs. Supports standard dice notation,
+advantage/disadvantage, keep-highest/lowest, exact probability computation, and
+named presets.
 
 ## Usage
 
 ```
-roll <expression> [--prob <target>] [--dist] [--sims <n>]
+roll <expression> [options]
+roll --repl
+roll --save <name> <expression>
+roll --list
+roll --delete <name>
 ```
 
 ### Dice expressions
 
-- `2d10+4` — roll 2 ten-sided dice and add 4
-- `d20` — roll a single d20
-- `adv d20+5` — roll d20 with advantage, add 5
-- `dis d20-1` — roll d20 with disadvantage, subtract 1
-- `2d6+1d4+3` — roll multiple dice groups with a flat bonus
+| Expression | Meaning |
+|---|---|
+| `2d10+4` | Roll 2d10, add 4 |
+| `d20` | Roll a single d20 |
+| `adv d20+5` | Roll d20 with advantage (take higher), add 5 |
+| `dis d20-1` | Roll d20 with disadvantage (take lower), subtract 1 |
+| `2d6+1d4+3` | Multiple dice groups with a flat bonus |
+| `4d6kh3` | Roll 4d6, keep the highest 3 (D&D ability scores) |
+| `4d6kl1` | Roll 4d6, keep the lowest 1 |
+
+### Rolling multiple times
+
+Use `-n` / `--times` to roll the same expression several times at once:
+
+```
+roll 2d6+3 -n 5
+# #1: 2d6+3 => [4, 2] (+3) = 9
+# #2: 2d6+3 => [6, 1] (+3) = 10
+# ...
+```
+
+### Theoretical statistics
+
+Use `--stats` to print the theoretical min, max, and mean alongside any output:
+
+```
+roll 2d6+3 --stats
+# 2d6+3 => [5, 3] (+3) = 11
+#   [min=5, max=15, mean=10.00]
+```
 
 ### Probability estimation
 
-Use `--prob` to estimate the chance of rolling at least a given value:
+Use `--prob` to calculate the chance of rolling at least a given value.
+For simple expressions (no advantage/disadvantage, no keep), the result is
+computed **exactly** via polynomial convolution; otherwise it falls back to
+Monte Carlo simulation:
 
 ```
-roll 2d10+4 --prob 15
-# P(2d10+4 >= 15) = 42.00% (420000 / 1000000 sims)
+roll d20 --prob 15
+# P(1d20 >= 15) = 30.0000% (exact)
+
+roll adv d20 --prob 15
+# P(adv 1d20 >= 15) = 50.97% (509700 / 1000000 sims)
 ```
 
 The number of simulations defaults to 1,000,000 and can be changed with `--sims`.
 
 ### Distribution histogram
 
-Use `--dist` to see the full probability distribution as an ASCII histogram:
+Use `--dist` to see the full probability distribution as an ASCII histogram.
+Cannot be combined with `--prob`.
 
 ```
 roll 2d6 --dist
+# Distribution for 2d6 (1000000 simulations):
+#  2 |  2.8% ███
+#  3 |  5.5% ██████
+#  ...
 ```
 
-This shows every possible result value with its percentage and a bar chart. Cannot be combined with `--prob`.
+### Interactive REPL
+
+Use `--repl` to drop into an interactive session where you can type expressions
+one per line without re-invoking the binary:
+
+```
+roll --repl
+# Roll REPL — type a dice expression or 'quit' to exit.
+# > adv d20+5
+# adv 1d20+5 => [18] vs [7] (+5) = 23
+# > 4d6kh3
+# 4d6kh3 => [6, 5, 3] = 14
+# > quit
+```
+
+### Named presets
+
+Save frequently-used expressions as named presets stored in
+`~/.config/roll/presets.toml`:
+
+```
+roll --save attack "adv d20+7"
+# Saved preset 'attack' = 'adv d20+7'.
+
+roll --list
+# Saved presets:
+#   attack = adv d20+7
+
+roll attack
+# adv 1d20+7 => [17] vs [9] (+7) = 24
+
+roll --delete attack
+# Deleted preset 'attack'.
+```
+
+Preset names are resolved case-insensitively before the input is parsed as a
+dice expression. Any roll option (`--times`, `--stats`, `--prob`, `--dist`)
+works normally with presets.
 
 ## Building
 
