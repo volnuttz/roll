@@ -53,6 +53,10 @@ pub fn bar_chart() -> Style {
     Style::default().fg(ACCENT)
 }
 
+pub fn bar_highlight() -> Style {
+    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+}
+
 pub fn stats() -> Style {
     Style::default().fg(Color::DarkGray)
 }
