@@ -4,6 +4,7 @@ use ratatui::style::{Color, Modifier, Style};
 
 pub const ACCENT: Color = Color::Cyan;
 pub const ACCENT_DIM: Color = Color::DarkGray;
+pub const SUCCESS: Color = Color::Green;
 pub const DANGER: Color = Color::Red;
 pub const WARNING: Color = Color::Yellow;
 
@@ -59,6 +60,40 @@ pub fn bar_highlight() -> Style {
 
 pub fn stats() -> Style {
     Style::default().fg(Color::DarkGray)
+}
+
+pub fn nat_max() -> Style {
+    Style::default().fg(SUCCESS).add_modifier(Modifier::BOLD)
+}
+
+pub fn nat_min() -> Style {
+    Style::default().fg(DANGER).add_modifier(Modifier::BOLD)
+}
+
+/// Flash style for a fresh roll result (bright background that fades).
+pub fn flash_result(age_ms: u128) -> Style {
+    if age_ms < 150 {
+        Style::default()
+            .fg(Color::Black)
+            .bg(Color::White)
+            .add_modifier(Modifier::BOLD)
+    } else if age_ms < 350 {
+        Style::default()
+            .fg(Color::White)
+            .bg(Color::DarkGray)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        result_total()
+    }
+}
+
+/// Flash border style for the Result block.
+pub fn flash_border(age_ms: u128) -> Style {
+    if age_ms < 350 {
+        Style::default().fg(ACCENT)
+    } else {
+        Style::default().fg(ACCENT_DIM)
+    }
 }
 
 pub fn selected() -> Style {

@@ -85,6 +85,8 @@ fn handle_distribution(app: &mut App, key: KeyEvent) {
         KeyCode::Esc | KeyCode::Tab => app.go_back(),
         KeyCode::Left => app.dist_move_target(-1),
         KeyCode::Right => app.dist_move_target(1),
+        KeyCode::Char('+') | KeyCode::Char('=') => app.dist_increase_sims(),
+        KeyCode::Char('-') | KeyCode::Char('_') => app.dist_decrease_sims(),
         KeyCode::Char('q') => app.go_back(),
         _ => {}
     }

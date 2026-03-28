@@ -100,10 +100,18 @@ fn draw_input(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_result(f: &mut Frame, app: &App, area: Rect) {
+    let age_ms = app.latest_roll_age_ms().unwrap_or(1000);
+
+    let border_style = if app.error_msg.is_some() {
+        Style::default().fg(theme::DANGER)
+    } else {
+        theme::flash_border(age_ms)
+    };
+
     let block = Block::default()
         .title(Span::styled(" Result ", theme::title()))
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(theme::ACCENT_DIM));
+        .border_style(border_style);
 
     let content = if let Some(ref err) = app.error_msg {
         vec![Line::from(Span::styled(
@@ -111,12 +119,30 @@ fn draw_result(f: &mut Frame, app: &App, area: Rect) {
             theme::error(),
         ))]
     } else if let Some(entry) = app.latest_roll() {
+        // Choose total style: nat max (green), nat min (red), flash, or normal
+        let total_style = if entry.is_nat_max {
+            theme::nat_max()
+        } else if entry.is_nat_min {
+            theme::nat_min()
+        } else {
+            theme::flash_result(age_ms)
+        };
+
+        // Build the total display with optional nat label
+        let total_str = if entry.is_nat_max {
+            format!("{} NAT MAX!", entry.total)
+        } else if entry.is_nat_min {
+            format!("{} NAT MIN", entry.total)
+        } else {
+            entry.total.to_string()
+        };
+
         let mut lines = vec![Line::from(vec![
             Span::styled(&entry.expression, theme::history_expr()),
             Span::styled(" => ", Style::default().fg(ratatui::style::Color::DarkGray)),
             Span::styled(&entry.breakdown, theme::result_detail()),
             Span::styled(" = ", Style::default().fg(ratatui::style::Color::DarkGray)),
-            Span::styled(entry.total.to_string(), theme::result_total()),
+            Span::styled(total_str, total_style),
         ])];
         lines.push(Line::from(Span::styled(
             format!(
@@ -164,10 +190,17 @@ fn draw_history(f: &mut Frame, app: &App, area: Rect) {
         .skip(1) // skip latest, it's shown in Result area
         .skip(app.history_scroll)
         .map(|entry| {
+            let total_style = if entry.is_nat_max {
+                theme::nat_max()
+            } else if entry.is_nat_min {
+                theme::nat_min()
+            } else {
+                theme::history_result()
+            };
             let line = Line::from(vec![
                 Span::styled(format!("{:<16}", entry.expression), theme::history_expr()),
                 Span::styled(" => ", Style::default().fg(ratatui::style::Color::DarkGray)),
-                Span::styled(format!("{:<6}", entry.total), theme::history_result()),
+                Span::styled(format!("{:<6}", entry.total), total_style),
                 Span::styled(&entry.breakdown, theme::result_detail()),
             ]);
             ListItem::new(line)
@@ -297,6 +330,8 @@ fn draw_distribution(f: &mut Frame, app: &App) {
     let footer = Paragraph::new(Line::from(vec![
         Span::styled("[Left/Right]", theme::keybinding_key()),
         Span::styled(" Move target  ", theme::keybinding_desc()),
+        Span::styled("[+/-]", theme::keybinding_key()),
+        Span::styled(" Sims  ", theme::keybinding_desc()),
         Span::styled("[Esc/Tab]", theme::keybinding_key()),
         Span::styled(" Back", theme::keybinding_desc()),
     ]))
@@ -406,8 +441,8 @@ fn draw_help_overlay(f: &mut Frame, _app: &App) {
     let area = f.area();
 
     // Center a box
-    let width = 50.min(area.width.saturating_sub(4));
-    let height = 20.min(area.height.saturating_sub(4));
+    let width = 54.min(area.width.saturating_sub(4));
+    let height = 26.min(area.height.saturating_sub(4));
     let x = (area.width.saturating_sub(width)) / 2;
     let y = (area.height.saturating_sub(height)) / 2;
     let popup = Rect::new(x, y, width, height);
@@ -456,6 +491,25 @@ fn draw_help_overlay(f: &mut Frame, _app: &App) {
         Line::from(vec![
             Span::styled("  Left/Right ", theme::keybinding_key()),
             Span::styled("Move probability target", theme::keybinding_desc()),
+        ]),
+        Line::from(vec![
+            Span::styled("  +/-        ", theme::keybinding_key()),
+            Span::styled("Increase/decrease simulations", theme::keybinding_desc()),
+        ]),
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            "  Colors",
+            Style::default()
+                .add_modifier(Modifier::BOLD)
+                .fg(theme::ACCENT),
+        )]),
+        Line::from(vec![
+            Span::styled("  NAT MAX!   ", theme::nat_max()),
+            Span::styled("All dice rolled maximum", theme::keybinding_desc()),
+        ]),
+        Line::from(vec![
+            Span::styled("  NAT MIN    ", theme::nat_min()),
+            Span::styled("All dice rolled 1", theme::keybinding_desc()),
         ]),
         Line::from(""),
         Line::from(vec![Span::styled(

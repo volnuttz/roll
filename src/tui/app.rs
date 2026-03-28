@@ -1,5 +1,5 @@
 use roll::{
-    RollStats, compute_distribution, estimate_probability, exact_probability, parse_expr,
+    DiceExpr, RollStats, compute_distribution, estimate_probability, exact_probability, parse_expr,
     roll_stats, roll_verbose,
 };
 use std::collections::BTreeMap;
@@ -25,6 +25,14 @@ pub struct RollEntry {
     pub breakdown: String,
     pub stats: RollStats,
     pub timestamp: Instant,
+    /// The kept dice per group, for nat/min/max coloring.
+    pub kept_dice: Vec<Vec<u32>>,
+    /// The sides of each dice group (parallel to kept_dice).
+    pub group_sides: Vec<u32>,
+    /// Whether this was a "natural" max (all dice rolled their maximum).
+    pub is_nat_max: bool,
+    /// Whether this was a "natural" min (all dice rolled 1).
+    pub is_nat_min: bool,
 }
 
 // ── Distribution data ────────────────────────────────────────────────────────
@@ -215,12 +223,25 @@ impl App {
         let (total, breakdown) = roll_verbose(&expr, &mut rng);
         let stats = roll_stats(&expr);
 
+        // For nat detection, do an extra roll_once to get kept dice
+        // (roll_verbose doesn't expose them). We use the breakdown from roll_verbose
+        // for display, and parse the kept dice from a separate roll for coloring
+        // of the *displayed* result. Since roll_verbose already consumed the roll,
+        // we parse the kept dice from the breakdown string instead.
+        let (kept_dice, group_sides) = parse_kept_from_breakdown(&breakdown, &expr);
+        let is_nat_max = is_natural_max(&kept_dice, &group_sides);
+        let is_nat_min = is_natural_min(&kept_dice);
+
         let entry = RollEntry {
             expression: resolved,
             total,
             breakdown,
             stats,
             timestamp: Instant::now(),
+            kept_dice,
+            group_sides,
+            is_nat_max,
+            is_nat_min,
         };
 
         self.roll_history.push(entry);
@@ -399,4 +420,114 @@ impl App {
     pub fn latest_roll(&self) -> Option<&RollEntry> {
         self.roll_history.last()
     }
+
+    /// Returns how many milliseconds ago the latest roll was made (for flash animation).
+    pub fn latest_roll_age_ms(&self) -> Option<u128> {
+        self.roll_history
+            .last()
+            .map(|e| e.timestamp.elapsed().as_millis())
+    }
+
+    // ── Distribution sims control ────────────────────────────────────────────
+
+    pub fn dist_increase_sims(&mut self) {
+        if let Some(ref mut dist) = self.dist {
+            dist.sims = next_sims_up(dist.sims);
+            self.recompute_distribution();
+        }
+    }
+
+    pub fn dist_decrease_sims(&mut self) {
+        if let Some(ref mut dist) = self.dist {
+            dist.sims = next_sims_down(dist.sims);
+            self.recompute_distribution();
+        }
+    }
+
+    fn recompute_distribution(&mut self) {
+        if let Some(ref mut dist) = self.dist {
+            let expr = match parse_expr(&dist.expr_str) {
+                Ok(e) => e,
+                Err(_) => return,
+            };
+            let mut rng = rand::rng();
+            dist.counts = compute_distribution(&expr, dist.sims, &mut rng);
+            // Recompute target probability if one was set
+            if let Some(target) = dist.target {
+                let prob = exact_probability(&expr, target)
+                    .unwrap_or_else(|| estimate_probability(&expr, target, dist.sims, &mut rng));
+                dist.target_prob = Some(prob);
+            }
+        }
+    }
+}
+
+// ── Sims stepping ────────────────────────────────────────────────────────────
+
+const SIMS_STEPS: &[u64] = &[
+    10_000, 50_000, 100_000, 500_000, 1_000_000, 5_000_000, 10_000_000,
+];
+
+fn next_sims_up(current: u64) -> u64 {
+    SIMS_STEPS
+        .iter()
+        .find(|&&s| s > current)
+        .copied()
+        .unwrap_or(*SIMS_STEPS.last().unwrap())
+}
+
+fn next_sims_down(current: u64) -> u64 {
+    SIMS_STEPS
+        .iter()
+        .rev()
+        .find(|&&s| s < current)
+        .copied()
+        .unwrap_or(SIMS_STEPS[0])
+}
+
+// ── Nat detection helpers ────────────────────────────────────────────────────
+
+/// Parse kept dice values from the breakdown string produced by roll_verbose.
+/// Breakdown looks like "[3, 5] + [2]" or "[17 vs 12]" for adv/dis.
+fn parse_kept_from_breakdown(breakdown: &str, expr: &DiceExpr) -> (Vec<Vec<u32>>, Vec<u32>) {
+    // For advantage/disadvantage with "vs", just parse the first set
+    let working = if breakdown.contains(" vs ") {
+        breakdown.split(" vs ").next().unwrap_or(breakdown)
+    } else {
+        breakdown
+    };
+
+    let mut kept_dice = Vec::new();
+    let group_sides: Vec<u32> = expr.groups.iter().map(|g| g.sides).collect();
+
+    // Split on " + " to get each group's "[x, y, z]"
+    for part in working.split(" + ") {
+        let trimmed = part.trim().trim_start_matches('[').trim_end_matches(']');
+        let dice: Vec<u32> = trimmed
+            .split(',')
+            .filter_map(|s| s.trim().parse().ok())
+            .collect();
+        kept_dice.push(dice);
+    }
+
+    (kept_dice, group_sides)
+}
+
+fn is_natural_max(kept_dice: &[Vec<u32>], group_sides: &[u32]) -> bool {
+    if kept_dice.is_empty() {
+        return false;
+    }
+    kept_dice
+        .iter()
+        .zip(group_sides.iter())
+        .all(|(dice, &sides)| !dice.is_empty() && dice.iter().all(|&d| d == sides))
+}
+
+fn is_natural_min(kept_dice: &[Vec<u32>]) -> bool {
+    if kept_dice.is_empty() {
+        return false;
+    }
+    kept_dice
+        .iter()
+        .all(|dice| !dice.is_empty() && dice.iter().all(|&d| d == 1))
 }
