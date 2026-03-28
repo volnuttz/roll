@@ -8,6 +8,7 @@ named presets.
 
 ```
 roll <expression> [options]
+roll --tui [expression]
 roll --repl
 roll --save <name> <expression>
 roll --list
@@ -62,7 +63,8 @@ roll adv d20 --prob 15
 # P(adv 1d20 >= 15) = 50.97% (509700 / 1000000 sims)
 ```
 
-The number of simulations defaults to 1,000,000 and can be changed with `--sims`.
+The number of simulations defaults to 1,000,000 and can be changed with the `SIMS`
+environment variable (e.g. `SIMS=500000 roll d20 --prob 15`).
 
 ### Distribution histogram
 
@@ -76,6 +78,9 @@ roll 2d6 --dist
 #  3 |  5.5% ██████
 #  ...
 ```
+
+The simulation count defaults to 1,000,000 and can be changed with the `SIMS`
+environment variable.
 
 ### Interactive REPL
 
@@ -115,6 +120,40 @@ roll --delete attack
 Preset names are resolved case-insensitively before the input is parsed as a
 dice expression. Any roll option (`--times`, `--stats`, `--prob`, `--dist`)
 works normally with presets.
+
+### Interactive TUI
+
+Use `--tui` / `-t` to launch a full-screen terminal interface:
+
+```
+roll --tui
+roll adv d20+5 --tui   # opens TUI with expression pre-filled
+```
+
+The TUI has two tabs and a help overlay:
+
+- **Roller** — type a dice expression and press Enter to roll. Results show
+  individual dice with natural-max/natural-min highlighting, plus an
+  auto-generated distribution chart. A presets sidebar (F2) lets you browse
+  and roll saved presets.
+- **History** — scrollable log of all rolls from the current session.
+
+#### Key bindings
+
+| Key | Action |
+|---|---|
+| `Enter` | Roll the current expression |
+| `Tab` | Switch between Roller and History tabs |
+| `F1` | Toggle help overlay |
+| `F2` | Toggle presets sidebar |
+| `Up` / `Down` | Navigate input history (Roller) |
+| `j` / `k` | Navigate presets list (when sidebar focused) |
+| `d` | Delete selected preset (press twice to confirm) |
+| `PageUp` / `PageDown` | Scroll history (History tab) |
+| `Ctrl+A` / `Ctrl+E` | Move cursor to start / end of input |
+| `Ctrl+U` | Clear input line |
+| `Esc` | Dismiss error, close sidebar/overlay, or quit |
+| `Ctrl+C` | Quit immediately |
 
 ## Building
 

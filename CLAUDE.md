@@ -28,6 +28,12 @@ cargo fmt -- --check
 Rust CLI split into a library and a thin binary:
 - `src/lib.rs` — core logic (parsing, rolling, probability, distribution)
 - `src/main.rs` — CLI entry point using `clap` (derive), `rand`, `serde`, and `toml`
+- `src/tui/` — interactive TUI mode (ratatui + crossterm)
+  - `mod.rs` — terminal setup/teardown, preset bridge, public `run()` entry point
+  - `app.rs` — application state (`App`, `Screen`, `RollerFocus`, `RollEntry`, `DistData`, `PresetEntry`)
+  - `ui.rs` — widget layout and rendering
+  - `event.rs` — key event dispatch
+  - `theme.rs` — colour palette
 
 Key types:
 - `DiceExpr` — parsed dice expression (modifier, dice groups, flat bonus)
@@ -36,6 +42,12 @@ Key types:
 - `Keep` — All / Highest(n) / Lowest(n)
 - `ParseError` — typed parse failure enum (implements `Display` + `std::error::Error`)
 - `RollStats` — theoretical min, max, mean for an expression
+- `Screen` — Roller / History / Help (TUI tab state)
+- `RollerFocus` — Input / Presets (focus within Roller tab)
+- `App` — full TUI application state (screen, input, history, presets, distribution)
+- `RollEntry` — single roll result with breakdown, stats, nat detection
+- `DistData` — distribution histogram data for the chart widget
+- `PresetEntry` — name + expression pair for TUI preset list
 
 Key functions:
 - `parse_expr()` — parse a dice expression string into `DiceExpr`; returns `Result<DiceExpr, ParseError>`
@@ -53,9 +65,12 @@ Flow: CLI args → preset resolution → `parse_expr()` → one of these paths:
 3. `--dist` — `compute_distribution()` + `render_distribution()` for a histogram
 4. `--repl` — read expressions from stdin in a loop
 5. `--save` / `--list` / `--delete` — manage named presets in `~/.config/roll/presets.toml`
+6. `--tui` — `tui::run()` → enter alternate screen, event loop with `App` state, render via `ui::draw()`
 
 ## Dependencies
 
 - `clap` — CLI argument parsing (derive feature)
 - `rand 0.9` — dice rolling RNG (`rand::rng()` for thread-local RNG)
 - `serde` + `toml` — preset file serialisation/deserialisation
+- `ratatui 0.29` — terminal UI framework (widgets, layout, backend)
+- `crossterm 0.28` — cross-platform terminal input/output
