@@ -6,7 +6,6 @@ pub const ACCENT: Color = Color::Cyan;
 pub const ACCENT_DIM: Color = Color::DarkGray;
 pub const SUCCESS: Color = Color::Green;
 pub const DANGER: Color = Color::Red;
-pub const WARNING: Color = Color::Yellow;
 
 // ── Composite styles ─────────────────────────────────────────────────────────
 
@@ -52,10 +51,6 @@ pub fn history_result() -> Style {
 
 pub fn bar_chart() -> Style {
     Style::default().fg(ACCENT)
-}
-
-pub fn bar_highlight() -> Style {
-    Style::default().fg(WARNING)
 }
 
 pub fn stats() -> Style {

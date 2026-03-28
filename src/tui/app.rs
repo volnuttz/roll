@@ -1,7 +1,4 @@
-use roll::{
-    DiceExpr, RollStats, compute_distribution, estimate_probability, exact_probability, parse_expr,
-    roll_stats, roll_verbose,
-};
+use roll::{DiceExpr, RollStats, compute_distribution, parse_expr, roll_stats, roll_verbose};
 use std::collections::BTreeMap;
 use std::time::Instant;
 
@@ -10,9 +7,14 @@ use std::time::Instant;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Screen {
     Roller,
-    Distribution,
-    Presets,
+    History,
     Help,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RollerFocus {
+    Input,
+    Presets,
 }
 
 // ── Roll history entry ───────────────────────────────────────────────────────
@@ -38,12 +40,7 @@ pub struct RollEntry {
 // ── Distribution data ────────────────────────────────────────────────────────
 
 pub struct DistData {
-    pub expr_str: String,
     pub counts: BTreeMap<i64, u64>,
-    pub sims: u64,
-    pub stats: RollStats,
-    pub target: Option<i64>,
-    pub target_prob: Option<f64>,
 }
 
 // ── Preset entry ─────────────────────────────────────────────────────────────
@@ -75,6 +72,9 @@ pub struct App {
     pub preset_selected: usize,
     pub preset_confirm_delete: bool,
 
+    // Roller focus (input vs presets sidebar)
+    pub roller_focus: RollerFocus,
+
     // History scroll
     pub history_scroll: usize,
 
@@ -100,6 +100,7 @@ impl App {
             presets: Vec::new(),
             preset_selected: 0,
             preset_confirm_delete: false,
+            roller_focus: RollerFocus::Input,
             history_scroll: 0,
             sims,
         };
@@ -232,6 +233,12 @@ impl App {
         let is_nat_max = is_natural_max(&kept_dice, &group_sides);
         let is_nat_min = is_natural_min(&kept_dice);
 
+        // Auto-compute distribution for the rolled expression
+        let dist_counts = compute_distribution(&expr, self.sims, &mut rng);
+        self.dist = Some(DistData {
+            counts: dist_counts,
+        });
+
         let entry = RollEntry {
             expression: resolved,
             total,
@@ -263,80 +270,29 @@ impl App {
 
     // ── Distribution ─────────────────────────────────────────────────────────
 
-    pub fn open_distribution(&mut self) {
-        let input = self.input.trim().to_string();
-
-        // Use last rolled expression if input is empty
-        let expr_str = if input.is_empty() {
-            match self.roll_history.last() {
-                Some(entry) => entry.expression.clone(),
-                None => {
-                    self.error_msg = Some("Type an expression first".to_string());
-                    return;
-                }
-            }
-        } else {
-            // Resolve preset
-            self.presets
-                .iter()
-                .find(|p| p.name.to_lowercase() == input.to_lowercase())
-                .map(|p| p.expression.clone())
-                .unwrap_or(input)
-        };
-
-        let expr = match parse_expr(&expr_str) {
-            Ok(e) => e,
-            Err(e) => {
-                self.error_msg = Some(format!("{e}"));
-                return;
-            }
-        };
-
-        let mut rng = rand::rng();
-        let counts = compute_distribution(&expr, self.sims, &mut rng);
-        let stats = roll_stats(&expr);
-
-        self.dist = Some(DistData {
-            expr_str,
-            counts,
-            sims: self.sims,
-            stats,
-            target: None,
-            target_prob: None,
-        });
+    pub fn open_history(&mut self) {
         self.prev_screen = self.screen;
-        self.screen = Screen::Distribution;
-        self.error_msg = None;
+        self.screen = Screen::History;
     }
 
-    pub fn dist_set_target(&mut self, target: i64) {
-        if let Some(ref mut dist) = self.dist {
-            let expr = parse_expr(&dist.expr_str).unwrap();
-            let prob = exact_probability(&expr, target).unwrap_or_else(|| {
-                let mut rng = rand::rng();
-                estimate_probability(&expr, target, dist.sims, &mut rng)
-            });
-            dist.target = Some(target);
-            dist.target_prob = Some(prob);
-        }
-    }
-
-    pub fn dist_move_target(&mut self, delta: i64) {
-        if let Some(ref dist) = self.dist {
-            let current = dist
-                .target
-                .unwrap_or_else(|| dist.stats.min + (dist.stats.max - dist.stats.min) / 2);
-            let new_target = (current + delta).clamp(dist.stats.min, dist.stats.max);
-            self.dist_set_target(new_target);
-        }
+    pub fn toggle_presets_focus(&mut self) {
+        self.roller_focus = match self.roller_focus {
+            RollerFocus::Input => {
+                self.reload_presets();
+                RollerFocus::Presets
+            }
+            RollerFocus::Presets => {
+                self.preset_confirm_delete = false;
+                RollerFocus::Input
+            }
+        };
     }
 
     // ── Presets ──────────────────────────────────────────────────────────────
 
     pub fn open_presets(&mut self) {
         self.reload_presets();
-        self.prev_screen = self.screen;
-        self.screen = Screen::Presets;
+        self.roller_focus = RollerFocus::Presets;
         self.preset_confirm_delete = false;
         if self.preset_selected >= self.presets.len() {
             self.preset_selected = 0;
@@ -366,7 +322,7 @@ impl App {
         if let Some(preset) = self.presets.get(self.preset_selected) {
             self.input = preset.expression.clone();
             self.cursor_pos = self.input.len();
-            self.screen = Screen::Roller;
+            self.roller_focus = RollerFocus::Input;
             self.submit_roll();
         }
     }
@@ -389,7 +345,7 @@ impl App {
     // ── Screen navigation ────────────────────────────────────────────────────
 
     pub fn go_back(&mut self) {
-        self.screen = self.prev_screen;
+        self.screen = Screen::Roller;
         self.prev_screen = Screen::Roller;
         self.error_msg = None;
     }
@@ -427,62 +383,6 @@ impl App {
             .last()
             .map(|e| e.timestamp.elapsed().as_millis())
     }
-
-    // ── Distribution sims control ────────────────────────────────────────────
-
-    pub fn dist_increase_sims(&mut self) {
-        if let Some(ref mut dist) = self.dist {
-            dist.sims = next_sims_up(dist.sims);
-            self.recompute_distribution();
-        }
-    }
-
-    pub fn dist_decrease_sims(&mut self) {
-        if let Some(ref mut dist) = self.dist {
-            dist.sims = next_sims_down(dist.sims);
-            self.recompute_distribution();
-        }
-    }
-
-    fn recompute_distribution(&mut self) {
-        if let Some(ref mut dist) = self.dist {
-            let expr = match parse_expr(&dist.expr_str) {
-                Ok(e) => e,
-                Err(_) => return,
-            };
-            let mut rng = rand::rng();
-            dist.counts = compute_distribution(&expr, dist.sims, &mut rng);
-            // Recompute target probability if one was set
-            if let Some(target) = dist.target {
-                let prob = exact_probability(&expr, target)
-                    .unwrap_or_else(|| estimate_probability(&expr, target, dist.sims, &mut rng));
-                dist.target_prob = Some(prob);
-            }
-        }
-    }
-}
-
-// ── Sims stepping ────────────────────────────────────────────────────────────
-
-const SIMS_STEPS: &[u64] = &[
-    10_000, 50_000, 100_000, 500_000, 1_000_000, 5_000_000, 10_000_000,
-];
-
-fn next_sims_up(current: u64) -> u64 {
-    SIMS_STEPS
-        .iter()
-        .find(|&&s| s > current)
-        .copied()
-        .unwrap_or(*SIMS_STEPS.last().unwrap())
-}
-
-fn next_sims_down(current: u64) -> u64 {
-    SIMS_STEPS
-        .iter()
-        .rev()
-        .find(|&&s| s < current)
-        .copied()
-        .unwrap_or(SIMS_STEPS[0])
 }
 
 // ── Nat detection helpers ────────────────────────────────────────────────────

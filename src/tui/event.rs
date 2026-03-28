@@ -1,7 +1,7 @@
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use std::time::Duration;
 
-use super::app::{App, Screen};
+use super::app::{App, RollerFocus, Screen};
 
 /// Poll for a crossterm event with the given timeout.
 /// Returns None on timeout.
@@ -27,16 +27,18 @@ pub fn handle_key(app: &mut App, key: KeyEvent) {
     }
 
     match app.screen {
-        Screen::Roller => handle_roller(app, key),
-        Screen::Distribution => handle_distribution(app, key),
-        Screen::Presets => handle_presets(app, key),
+        Screen::Roller => match app.roller_focus {
+            RollerFocus::Input => handle_roller_input(app, key),
+            RollerFocus::Presets => handle_roller_presets(app, key),
+        },
+        Screen::History => handle_history(app, key),
         Screen::Help => handle_help(app, key),
     }
 }
 
-// ── Roller screen ────────────────────────────────────────────────────────────
+// ── Roller screen (input focused) ───────────────────────────────────────────
 
-fn handle_roller(app: &mut App, key: KeyEvent) {
+fn handle_roller_input(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Enter => app.submit_roll(),
         KeyCode::Char(c) => {
@@ -62,7 +64,7 @@ fn handle_roller(app: &mut App, key: KeyEvent) {
         KeyCode::End => app.move_cursor_end(),
         KeyCode::Up => app.history_up(),
         KeyCode::Down => app.history_down(),
-        KeyCode::Tab => app.open_distribution(),
+        KeyCode::Tab => app.open_history(),
         KeyCode::Esc => {
             if app.error_msg.is_some() {
                 app.error_msg = None;
@@ -72,41 +74,28 @@ fn handle_roller(app: &mut App, key: KeyEvent) {
         }
         KeyCode::F(1) => app.toggle_help(),
         KeyCode::F(2) => app.open_presets(),
-        KeyCode::PageUp => app.scroll_history_up(),
-        KeyCode::PageDown => app.scroll_history_down(),
         _ => {}
     }
 }
 
-// ── Distribution screen ──────────────────────────────────────────────────────
+// ── Roller screen (presets focused) ─────────────────────────────────────────
 
-fn handle_distribution(app: &mut App, key: KeyEvent) {
+fn handle_roller_presets(app: &mut App, key: KeyEvent) {
     match key.code {
-        KeyCode::Esc | KeyCode::Tab => app.go_back(),
-        KeyCode::Left => app.dist_move_target(-1),
-        KeyCode::Right => app.dist_move_target(1),
-        KeyCode::Char('+') | KeyCode::Char('=') => app.dist_increase_sims(),
-        KeyCode::Char('-') | KeyCode::Char('_') => app.dist_decrease_sims(),
-        KeyCode::Char('q') => app.go_back(),
-        _ => {}
-    }
-}
-
-// ── Presets screen ───────────────────────────────────────────────────────────
-
-fn handle_presets(app: &mut App, key: KeyEvent) {
-    match key.code {
-        KeyCode::Esc | KeyCode::F(2) => {
-            app.preset_confirm_delete = false;
-            app.go_back();
-        }
         KeyCode::Up | KeyCode::Char('k') => app.preset_select_up(),
         KeyCode::Down | KeyCode::Char('j') => app.preset_select_down(),
         KeyCode::Enter => app.preset_roll_selected(),
         KeyCode::Char('d') => app.preset_delete_selected(),
+        KeyCode::Esc => app.toggle_presets_focus(),
+        KeyCode::F(2) => app.toggle_presets_focus(),
+        KeyCode::Tab => {
+            app.roller_focus = RollerFocus::Input;
+            app.open_history();
+        }
+        KeyCode::F(1) => app.toggle_help(),
         KeyCode::Char('q') => {
             app.preset_confirm_delete = false;
-            app.go_back();
+            app.toggle_presets_focus();
         }
         _ => {
             app.preset_confirm_delete = false;
@@ -114,7 +103,20 @@ fn handle_presets(app: &mut App, key: KeyEvent) {
     }
 }
 
-// ── Help screen ──────────────────────────────────────────────────────────────
+// ── History screen ──────────────────────────────────────────────────────────
+
+fn handle_history(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Tab | KeyCode::Esc => app.go_back(),
+        KeyCode::PageUp => app.scroll_history_up(),
+        KeyCode::PageDown => app.scroll_history_down(),
+        KeyCode::Char('q') => app.go_back(),
+        KeyCode::F(1) => app.toggle_help(),
+        _ => {}
+    }
+}
+
+// ── Help screen ─────────────────────────────────────────────────────────────
 
 fn handle_help(app: &mut App, key: KeyEvent) {
     match key.code {
