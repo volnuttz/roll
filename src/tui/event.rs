@@ -53,7 +53,11 @@ fn handle_roller_input(app: &mut App, key: KeyEvent) {
                     _ => {}
                 }
             } else {
-                app.insert_char(c);
+                match c {
+                    '[' => app.dist_move_target(-1),
+                    ']' => app.dist_move_target(1),
+                    _ => app.insert_char(c),
+                }
             }
         }
         KeyCode::Backspace => app.delete_char_before(),

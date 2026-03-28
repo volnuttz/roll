@@ -1,4 +1,7 @@
-use roll::{DiceExpr, RollStats, compute_distribution, parse_expr, roll_stats, roll_verbose};
+use roll::{
+    DiceExpr, RollStats, compute_distribution, estimate_probability, exact_probability,
+    parse_expr, roll_stats, roll_verbose,
+};
 use std::collections::BTreeMap;
 use std::time::Instant;
 
@@ -40,7 +43,10 @@ pub struct RollEntry {
 // ── Distribution data ────────────────────────────────────────────────────────
 
 pub struct DistData {
+    pub expr_str: String,
     pub counts: BTreeMap<i64, u64>,
+    pub target: Option<i64>,
+    pub target_prob: Option<f64>,
 }
 
 // ── Preset entry ─────────────────────────────────────────────────────────────
@@ -236,7 +242,10 @@ impl App {
         // Auto-compute distribution for the rolled expression
         let dist_counts = compute_distribution(&expr, self.sims, &mut rng);
         self.dist = Some(DistData {
+            expr_str: resolved.clone(),
             counts: dist_counts,
+            target: None,
+            target_prob: None,
         });
 
         let entry = RollEntry {
@@ -266,6 +275,37 @@ impl App {
         self.cursor_pos = 0;
         self.error_msg = None;
         self.history_scroll = 0;
+    }
+
+    // ── Distribution navigation ───────────────────────────────────────────────
+
+    pub fn dist_set_target(&mut self, target: i64) {
+        if let Some(ref mut dist) = self.dist {
+            let expr = match parse_expr(&dist.expr_str) {
+                Ok(e) => e,
+                Err(_) => return,
+            };
+            let prob = exact_probability(&expr, target).unwrap_or_else(|| {
+                let mut rng = rand::rng();
+                estimate_probability(&expr, target, self.sims, &mut rng)
+            });
+            dist.target = Some(target);
+            dist.target_prob = Some(prob);
+        }
+    }
+
+    pub fn dist_move_target(&mut self, delta: i64) {
+        if let Some(ref dist) = self.dist {
+            let keys: Vec<i64> = dist.counts.keys().copied().collect();
+            if keys.is_empty() {
+                return;
+            }
+            let current = dist.target.unwrap_or_else(|| keys[keys.len() / 2]);
+            let pos = keys.partition_point(|&k| k < current);
+            let new_pos = (pos as i64 + delta).clamp(0, keys.len() as i64 - 1) as usize;
+            let new_target = keys[new_pos];
+            self.dist_set_target(new_target);
+        }
     }
 
     // ── Distribution ─────────────────────────────────────────────────────────

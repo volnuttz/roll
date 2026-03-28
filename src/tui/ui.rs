@@ -248,12 +248,11 @@ fn draw_result(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_inline_distribution(f: &mut Frame, app: &App, area: Rect) {
-    let block = Block::default()
-        .title(Span::styled(" Distribution ", theme::title()))
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(theme::ACCENT_DIM));
-
     let Some(ref dist) = app.dist else {
+        let block = Block::default()
+            .title(Span::styled(" Distribution ", theme::title()))
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(theme::ACCENT_DIM));
         let empty = Paragraph::new(Line::from(Span::styled(
             "Roll an expression to see distribution",
             Style::default().fg(ratatui::style::Color::DarkGray),
@@ -262,6 +261,48 @@ fn draw_inline_distribution(f: &mut Frame, app: &App, area: Rect) {
         f.render_widget(empty, area);
         return;
     };
+
+    // Split off a 1-line footer for the probability readout when active
+    let has_target = dist.target.is_some();
+    let chunks = if has_target {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(4), Constraint::Length(1)])
+            .split(area)
+    } else {
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(4)])
+            .split(area)
+    };
+    let chart_area = chunks[0];
+
+    // Build title with prob hint or result
+    let title = if let (Some(target), Some(prob)) = (dist.target, dist.target_prob) {
+        Line::from(vec![
+            Span::styled(" Distribution ", theme::title()),
+            Span::styled(
+                format!("P(>= {target}) = {:.1}%", prob * 100.0),
+                Style::default()
+                    .fg(ratatui::style::Color::Yellow)
+                    .add_modifier(ratatui::style::Modifier::BOLD),
+            ),
+            Span::styled(" ", Style::default()),
+        ])
+    } else {
+        Line::from(vec![
+            Span::styled(" Distribution ", theme::title()),
+            Span::styled(
+                " [/] navigate ",
+                Style::default().fg(ratatui::style::Color::DarkGray),
+            ),
+        ])
+    };
+
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(theme::ACCENT_DIM));
 
     let total: u64 = dist.counts.values().sum();
     let bars: Vec<Bar> = dist
@@ -273,10 +314,15 @@ fn draw_inline_distribution(f: &mut Frame, app: &App, area: Rect) {
             } else {
                 0
             };
+            let style = if dist.target == Some(value) {
+                theme::bar_highlight()
+            } else {
+                theme::bar_chart()
+            };
             Bar::default()
                 .value(pct)
                 .label(Line::from(value.to_string()))
-                .style(theme::bar_chart())
+                .style(style)
                 .text_value(format!("{:.1}%", count as f64 / total as f64 * 100.0))
         })
         .collect();
@@ -285,10 +331,27 @@ fn draw_inline_distribution(f: &mut Frame, app: &App, area: Rect) {
     let chart = BarChart::default()
         .block(block)
         .data(BarGroup::default().bars(&bars))
-        .bar_width(((area.width.saturating_sub(2)) / bar_count.max(1)).clamp(1, 5))
+        .bar_width(((chart_area.width.saturating_sub(2)) / bar_count.max(1)).clamp(1, 5))
         .bar_gap(1);
 
-    f.render_widget(chart, area);
+    f.render_widget(chart, chart_area);
+
+    // Probability detail line
+    if has_target {
+        if let (Some(target), Some(prob)) = (dist.target, dist.target_prob) {
+            let prob_line = Line::from(vec![
+                Span::styled(
+                    format!("  P(result >= {target})  =  {:.2}%", prob * 100.0),
+                    Style::default().fg(ratatui::style::Color::Yellow),
+                ),
+                Span::styled(
+                    "   [/] move target",
+                    Style::default().fg(ratatui::style::Color::DarkGray),
+                ),
+            ]);
+            f.render_widget(Paragraph::new(prob_line), chunks[1]);
+        }
+    }
 }
 
 fn draw_roller_footer(f: &mut Frame, app: &App, area: Rect) {
@@ -311,6 +374,8 @@ fn draw_roller_footer(f: &mut Frame, app: &App, area: Rect) {
             Span::styled(" Roll  ", theme::keybinding_desc()),
             Span::styled("[Tab]", theme::keybinding_key()),
             Span::styled(" History  ", theme::keybinding_desc()),
+            Span::styled("[ ]", theme::keybinding_key()),
+            Span::styled(" Dist target  ", theme::keybinding_desc()),
             Span::styled("[F2]", theme::keybinding_key()),
             Span::styled(" Presets  ", theme::keybinding_desc()),
             Span::styled("[F1]", theme::keybinding_key()),
@@ -445,6 +510,10 @@ fn draw_help_overlay(f: &mut Frame, _app: &App) {
         Line::from(vec![
             Span::styled("  Ctrl+U     ", theme::keybinding_key()),
             Span::styled("Clear input", theme::keybinding_desc()),
+        ]),
+        Line::from(vec![
+            Span::styled("  [ / ]      ", theme::keybinding_key()),
+            Span::styled("Move distribution target (P >= N)", theme::keybinding_desc()),
         ]),
         Line::from(""),
         Line::from(vec![Span::styled(
