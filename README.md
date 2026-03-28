@@ -130,26 +130,29 @@ roll --tui
 roll adv d20+5 --tui   # opens TUI with expression pre-filled
 ```
 
-The TUI has two tabs and a help overlay:
+The TUI has three screens:
 
 - **Roller** — type a dice expression and press Enter to roll. Results show
   individual dice with natural-max/natural-min highlighting, plus an
-  auto-generated distribution chart. A presets sidebar (F2) lets you browse
+  auto-generated distribution chart. A presets sidebar (Tab) lets you browse
   and roll saved presets.
-- **History** — scrollable log of all rolls from the current session.
+- **History** — scrollable log of all rolls from the current session (F2).
+- **Help** — key binding reference overlay (F1).
 
 #### Key bindings
 
 | Key | Action |
 |---|---|
 | `Enter` | Roll the current expression |
-| `Tab` | Switch between Roller and History tabs |
+| `Tab` | Toggle presets sidebar |
 | `F1` | Toggle help overlay |
-| `F2` | Toggle presets sidebar |
+| `F2` | Open history screen |
 | `Up` / `Down` | Navigate input history (Roller) |
+| `Left` / `Right` | Move cursor within input |
 | `j` / `k` | Navigate presets list (when sidebar focused) |
 | `d` | Delete selected preset (press twice to confirm) |
-| `PageUp` / `PageDown` | Scroll history (History tab) |
+| `[` / `]` | Move distribution target left / right |
+| `PageUp` / `PageDown` | Scroll history (History screen) |
 | `Ctrl+A` / `Ctrl+E` | Move cursor to start / end of input |
 | `Ctrl+U` | Clear input line |
 | `Esc` | Dismiss error, close sidebar/overlay, or quit |
