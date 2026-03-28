@@ -21,10 +21,6 @@ struct Cli {
     #[arg(long)]
     prob: Option<i64>,
 
-    /// Number of Monte Carlo simulations (fallback when exact computation isn't possible)
-    #[arg(long, default_value_t = 1_000_000)]
-    sims: u64,
-
     /// Roll the expression this many times
     #[arg(long, short = 'n', default_value_t = 1)]
     times: u32,
@@ -158,15 +154,23 @@ fn run_repl(rng: &mut impl rand::Rng) {
         if line == "quit" || line == "exit" {
             break;
         }
-        handle_expression(line, false, None, 1_000_000, 1, false, rng);
+        handle_expression(line, false, None, sims_from_env(), 1, false, rng);
     }
 }
 
 // ── main ──────────────────────────────────────────────────────────────────────
 
+fn sims_from_env() -> u64 {
+    std::env::var("SIMS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1_000_000)
+}
+
 fn main() {
     let cli = Cli::parse();
     let mut rng = rand::rng();
+    let sims = sims_from_env();
 
     // -- Preset management (no expression needed) --
 
@@ -249,7 +253,7 @@ fn main() {
         &resolved,
         cli.dist,
         cli.prob,
-        cli.sims,
+        sims,
         cli.times,
         cli.stats,
         &mut rng,
