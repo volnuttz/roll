@@ -63,7 +63,8 @@ roll adv d20 --prob 15
 # P(adv 1d20 >= 15) = 50.97% (509700 / 1000000 sims)
 ```
 
-The number of simulations defaults to 1,000,000 and can be changed with `--sims`.
+The number of simulations defaults to 1,000,000 and can be changed with the `SIMS`
+environment variable (e.g. `SIMS=500000 roll d20 --prob 15`).
 
 ### Distribution histogram
 
@@ -78,7 +79,8 @@ roll 2d6 --dist
 #  ...
 ```
 
-The simulation count defaults to 1,000,000 and can be changed with `--sims`.
+The simulation count defaults to 1,000,000 and can be changed with the `SIMS`
+environment variable.
 
 ### Interactive REPL
 
