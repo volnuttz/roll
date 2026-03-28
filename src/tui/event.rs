@@ -68,7 +68,7 @@ fn handle_roller_input(app: &mut App, key: KeyEvent) {
         KeyCode::End => app.move_cursor_end(),
         KeyCode::Up => app.history_up(),
         KeyCode::Down => app.history_down(),
-        KeyCode::Tab => app.open_history(),
+        KeyCode::Tab => app.open_presets(),
         KeyCode::Esc => {
             if app.error_msg.is_some() {
                 app.error_msg = None;
@@ -77,7 +77,7 @@ fn handle_roller_input(app: &mut App, key: KeyEvent) {
             }
         }
         KeyCode::F(1) => app.toggle_help(),
-        KeyCode::F(2) => app.open_presets(),
+        KeyCode::F(2) => app.open_history(),
         _ => {}
     }
 }
@@ -90,9 +90,8 @@ fn handle_roller_presets(app: &mut App, key: KeyEvent) {
         KeyCode::Down | KeyCode::Char('j') => app.preset_select_down(),
         KeyCode::Enter => app.preset_roll_selected(),
         KeyCode::Char('d') => app.preset_delete_selected(),
-        KeyCode::Esc => app.toggle_presets_focus(),
-        KeyCode::F(2) => app.toggle_presets_focus(),
-        KeyCode::Tab => {
+        KeyCode::Tab | KeyCode::Esc => app.toggle_presets_focus(),
+        KeyCode::F(2) => {
             app.roller_focus = RollerFocus::Input;
             app.open_history();
         }
@@ -111,7 +110,7 @@ fn handle_roller_presets(app: &mut App, key: KeyEvent) {
 
 fn handle_history(app: &mut App, key: KeyEvent) {
     match key.code {
-        KeyCode::Tab | KeyCode::Esc => app.go_back(),
+        KeyCode::F(2) | KeyCode::Tab | KeyCode::Esc => app.go_back(),
         KeyCode::PageUp => app.scroll_history_up(),
         KeyCode::PageDown => app.scroll_history_down(),
         KeyCode::Char('q') => app.go_back(),

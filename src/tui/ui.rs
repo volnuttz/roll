@@ -143,7 +143,7 @@ fn draw_presets_sidebar(f: &mut Frame, app: &App, area: Rect) {
     };
 
     let block = Block::default()
-        .title(Span::styled(" Presets (F2) ", theme::title()))
+        .title(Span::styled(" Presets (Tab) ", theme::title()))
         .borders(Borders::ALL)
         .border_style(focus_border);
 
@@ -363,9 +363,9 @@ fn draw_roller_footer(f: &mut Frame, app: &App, area: Rect) {
             Span::styled(" Navigate  ", theme::keybinding_desc()),
             Span::styled("[d]", theme::keybinding_key()),
             Span::styled(" Delete  ", theme::keybinding_desc()),
-            Span::styled("[Esc/F2]", theme::keybinding_key()),
+            Span::styled("[Tab/Esc]", theme::keybinding_key()),
             Span::styled(" Back  ", theme::keybinding_desc()),
-            Span::styled("[Tab]", theme::keybinding_key()),
+            Span::styled("[F2]", theme::keybinding_key()),
             Span::styled(" History", theme::keybinding_desc()),
         ])
     } else {
@@ -373,11 +373,11 @@ fn draw_roller_footer(f: &mut Frame, app: &App, area: Rect) {
             Span::styled("[Enter]", theme::keybinding_key()),
             Span::styled(" Roll  ", theme::keybinding_desc()),
             Span::styled("[Tab]", theme::keybinding_key()),
-            Span::styled(" History  ", theme::keybinding_desc()),
+            Span::styled(" Presets  ", theme::keybinding_desc()),
             Span::styled("[ ]", theme::keybinding_key()),
             Span::styled(" Dist target  ", theme::keybinding_desc()),
             Span::styled("[F2]", theme::keybinding_key()),
-            Span::styled(" Presets  ", theme::keybinding_desc()),
+            Span::styled(" History  ", theme::keybinding_desc()),
             Span::styled("[F1]", theme::keybinding_key()),
             Span::styled(" Help  ", theme::keybinding_desc()),
             Span::styled("[Esc]", theme::keybinding_key()),
@@ -456,14 +456,12 @@ fn draw_history_list(f: &mut Frame, app: &App, area: Rect) {
 
 fn draw_history_footer(f: &mut Frame, area: Rect) {
     let keys = Line::from(vec![
-        Span::styled("[Tab]", theme::keybinding_key()),
+        Span::styled("[F2/Tab/Esc]", theme::keybinding_key()),
         Span::styled(" Roller  ", theme::keybinding_desc()),
         Span::styled("[PgUp/PgDn]", theme::keybinding_key()),
         Span::styled(" Scroll  ", theme::keybinding_desc()),
         Span::styled("[F1]", theme::keybinding_key()),
         Span::styled(" Help  ", theme::keybinding_desc()),
-        Span::styled("[Esc]", theme::keybinding_key()),
-        Span::styled(" Back", theme::keybinding_desc()),
     ]);
     let footer = Paragraph::new(keys).alignment(Alignment::Center);
     f.render_widget(footer, area);
@@ -497,15 +495,15 @@ fn draw_help_overlay(f: &mut Frame, _app: &App) {
         ]),
         Line::from(vec![
             Span::styled("  Tab        ", theme::keybinding_key()),
+            Span::styled("Focus presets sidebar", theme::keybinding_desc()),
+        ]),
+        Line::from(vec![
+            Span::styled("  F2         ", theme::keybinding_key()),
             Span::styled("Switch to History tab", theme::keybinding_desc()),
         ]),
         Line::from(vec![
             Span::styled("  Up/Down    ", theme::keybinding_key()),
             Span::styled("Browse input history", theme::keybinding_desc()),
-        ]),
-        Line::from(vec![
-            Span::styled("  F2         ", theme::keybinding_key()),
-            Span::styled("Focus presets sidebar", theme::keybinding_desc()),
         ]),
         Line::from(vec![
             Span::styled("  Ctrl+U     ", theme::keybinding_key()),
@@ -517,7 +515,7 @@ fn draw_help_overlay(f: &mut Frame, _app: &App) {
         ]),
         Line::from(""),
         Line::from(vec![Span::styled(
-            "  Presets (F2)",
+            "  Presets (Tab)",
             Style::default()
                 .add_modifier(Modifier::BOLD)
                 .fg(theme::ACCENT),
@@ -546,7 +544,7 @@ fn draw_help_overlay(f: &mut Frame, _app: &App) {
             Span::styled("Scroll roll history", theme::keybinding_desc()),
         ]),
         Line::from(vec![
-            Span::styled("  Tab/Esc    ", theme::keybinding_key()),
+            Span::styled("  F2/Tab/Esc ", theme::keybinding_key()),
             Span::styled("Back to Roller", theme::keybinding_desc()),
         ]),
         Line::from(""),
