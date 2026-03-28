@@ -258,7 +258,9 @@ pub fn roll_once(expr: &DiceExpr, rng: &mut impl Rng) -> (i64, Vec<Vec<u32>>) {
     let mut all_rolls = Vec::new();
 
     for g in &expr.groups {
-        let mut rolls: Vec<u32> = (0..g.count).map(|_| rng.random_range(1..=g.sides)).collect();
+        let mut rolls: Vec<u32> = (0..g.count)
+            .map(|_| rng.random_range(1..=g.sides))
+            .collect();
 
         let kept = match &g.keep {
             Keep::All => {
@@ -440,9 +442,7 @@ pub fn exact_probability(expr: &DiceExpr, target: i64) -> Option<f64> {
             let mut new_dist: BTreeMap<i64, f64> = BTreeMap::new();
             for (&val, &prob) in &dist {
                 for face in 1..=g.sides {
-                    *new_dist
-                        .entry(val + i64::from(face))
-                        .or_insert(0.0) += prob * p;
+                    *new_dist.entry(val + i64::from(face)).or_insert(0.0) += prob * p;
                 }
             }
             dist = new_dist;
@@ -917,7 +917,10 @@ mod tests {
 
     #[test]
     fn parse_error_display_no_dice() {
-        assert_eq!(ParseError::NoDiceFound.to_string(), "no dice found in expression");
+        assert_eq!(
+            ParseError::NoDiceFound.to_string(),
+            "no dice found in expression"
+        );
     }
 
     #[test]
@@ -963,7 +966,11 @@ mod tests {
             let (_, detail) = roll_verbose(&expr, &mut rng);
             // Detail looks like "[a, b, c]"; split on ',' to count dice
             let inner = detail.trim_start_matches('[').trim_end_matches(']');
-            assert_eq!(inner.split(',').count(), 3, "expected 3 kept dice, got: {detail}");
+            assert_eq!(
+                inner.split(',').count(),
+                3,
+                "expected 3 kept dice, got: {detail}"
+            );
         }
     }
 

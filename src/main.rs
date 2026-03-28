@@ -1,3 +1,5 @@
+mod tui;
+
 use clap::Parser;
 use roll::{
     compute_distribution, estimate_probability, exact_probability, parse_expr, render_distribution,
@@ -44,6 +46,10 @@ struct Cli {
     /// List all saved presets
     #[arg(long)]
     list: bool,
+
+    /// Launch interactive TUI mode
+    #[arg(long, short = 't')]
+    tui: bool,
 }
 
 // ── Presets ───────────────────────────────────────────────────────────────────
@@ -213,6 +219,21 @@ fn main() {
 
     let input = cli.expression.join(" ");
 
+    // -- TUI mode --
+
+    if cli.tui {
+        let expr = if input.is_empty() {
+            None
+        } else {
+            Some(input.as_str())
+        };
+        if let Err(e) = tui::run(expr, sims) {
+            eprintln!("TUI error: {e}");
+            std::process::exit(1);
+        }
+        return;
+    }
+
     // -- Save preset --
 
     if let Some(ref name) = cli.save {
@@ -250,12 +271,6 @@ fn main() {
     };
 
     handle_expression(
-        &resolved,
-        cli.dist,
-        cli.prob,
-        sims,
-        cli.times,
-        cli.stats,
-        &mut rng,
+        &resolved, cli.dist, cli.prob, sims, cli.times, cli.stats, &mut rng,
     );
 }
