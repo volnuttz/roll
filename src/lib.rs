@@ -888,6 +888,85 @@ mod tests {
         assert!(exact_probability(&expr, 10).is_none());
     }
 
+    #[test]
+    fn exact_probability_2d6_known_value() {
+        // P(2d6 >= 7) = 21/36 = 7/12
+        let expr = parse_expr("2d6").unwrap();
+        let p = exact_probability(&expr, 7).unwrap();
+        assert!((p - 7.0 / 12.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn exact_probability_with_flat_bonus() {
+        // P(d6+3 >= 7) = P(d6 >= 4) = 3/6 = 0.5
+        let expr = parse_expr("d6+3").unwrap();
+        let p = exact_probability(&expr, 7).unwrap();
+        assert!((p - 0.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn exact_probability_sums_to_one() {
+        // Sum of P(2d6 >= k) - P(2d6 >= k+1) across all outcomes should equal 1.
+        // Equivalently, P(2d6 >= 2) should be 1.0.
+        let expr = parse_expr("2d6").unwrap();
+        let p = exact_probability(&expr, 2).unwrap();
+        assert!((p - 1.0).abs() < 1e-10);
+    }
+
+    // ---- ParseError display tests ----
+
+    #[test]
+    fn parse_error_display_no_dice() {
+        assert_eq!(ParseError::NoDiceFound.to_string(), "no dice found in expression");
+    }
+
+    #[test]
+    fn parse_error_display_negative_group() {
+        assert_eq!(
+            ParseError::NegativeDiceGroup.to_string(),
+            "negative dice groups are not supported"
+        );
+    }
+
+    #[test]
+    fn parse_error_display_invalid_token() {
+        assert_eq!(
+            ParseError::InvalidToken("foo".to_string()).to_string(),
+            "invalid token: 'foo'"
+        );
+    }
+
+    #[test]
+    fn parse_error_display_invalid_sides() {
+        assert_eq!(
+            ParseError::InvalidSides("sides must be at least 1".to_string()).to_string(),
+            "invalid sides: 'sides must be at least 1'"
+        );
+    }
+
+    #[test]
+    fn parse_error_display_invalid_count() {
+        assert_eq!(
+            ParseError::InvalidDiceCount("count must be at least 1".to_string()).to_string(),
+            "invalid dice count: 'count must be at least 1'"
+        );
+    }
+
+    // ---- roll_verbose with keep tests ----
+
+    #[test]
+    fn roll_verbose_keep_shows_kept_count() {
+        // 4d6kh3 keeps 3 dice; the detail should contain exactly 3 numbers in brackets
+        let expr = parse_expr("4d6kh3").unwrap();
+        let mut rng = seeded_rng();
+        for _ in 0..20 {
+            let (_, detail) = roll_verbose(&expr, &mut rng);
+            // Detail looks like "[a, b, c]"; split on ',' to count dice
+            let inner = detail.trim_start_matches('[').trim_end_matches(']');
+            assert_eq!(inner.split(',').count(), 3, "expected 3 kept dice, got: {detail}");
+        }
+    }
+
     // ---- estimate_probability tests ----
 
     #[test]
