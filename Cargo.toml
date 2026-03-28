@@ -1,5 +1,5 @@
 [package]
-name = "dicekit"
+name = "rollcli"
 version = "0.1.0"
 edition = "2024"
 description = "A command-line dice roller for tabletop RPGs with advantage/disadvantage and probability estimation"
