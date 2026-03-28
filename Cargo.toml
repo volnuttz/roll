@@ -1,6 +1,6 @@
 [package]
 name = "rollcli"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2024"
 description = "A command-line dice roller for tabletop RPGs with advantage/disadvantage and probability estimation"
 license = "MIT"
