@@ -36,6 +36,3 @@ cargo clippy --all-targets -- -D warnings
 - `.github/workflows/ci.yml`: pull-request and main-branch validation.
 - `.github/workflows/release.yml`: builds and publishes binaries from version
   tags.
-
-For task-specific procedures, consult `.agents/README.md` and the relevant
-skill in `.agents/skills/`.
