@@ -5,6 +5,12 @@ inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+## 0.3.5
+
+### Changed
+
+- GitHub binary releases no longer include macOS Intel binaries.
+
 ## 0.3.4
 
 ### Added

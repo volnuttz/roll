@@ -50,11 +50,10 @@ workflow can use a repository environment and trusted publishing.
    | Platform | Archive |
    | --- | --- |
    | Linux x86_64 | `roll-v<VERSION>-x86_64-unknown-linux-gnu.tar.gz` |
-   | macOS Intel | `roll-v<VERSION>-x86_64-apple-darwin.tar.gz` |
    | macOS Apple Silicon | `roll-v<VERSION>-aarch64-apple-darwin.tar.gz` |
    | Windows x86_64 | `roll-v<VERSION>-x86_64-pc-windows-msvc.zip` |
 
-6. Confirm the generated GitHub Release has those four archives and
+6. Confirm the generated GitHub Release has those three archives and
    `SHA256SUMS.txt`; download and run the appropriate archive before announcing
    the release.
 
