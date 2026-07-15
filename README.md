@@ -164,6 +164,28 @@ The TUI has three screens:
 cargo build --release
 ```
 
+## Installing
+
+With Rust installed, get the package from crates.io:
+
+```
+cargo install rollcli
+```
+
+Prebuilt Linux, macOS, and Windows archives are available from the
+[GitHub Releases](https://github.com/volnuttz/roll/releases) page. Verify the
+download against the accompanying `SHA256SUMS.txt`, then place the `roll`
+binary on your `PATH`.
+
 ## License
 
 MIT
+
+## Documentation
+
+- [Dice expression syntax](docs/DICE-SYNTAX.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Contributing](docs/CONTRIBUTING.md)
+- [Release process](docs/RELEASING.md)
+- [Security policy](docs/SECURITY.md)
+- [Changelog](docs/CHANGELOG.md)
