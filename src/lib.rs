@@ -20,6 +20,7 @@
 use rand::Rng;
 use std::collections::BTreeMap;
 use std::fmt;
+use std::fmt::Write as _;
 
 // ── Error type ────────────────────────────────────────────────────────────────
 
@@ -335,7 +336,7 @@ pub fn format_rolls(rolls: &[Vec<u32>]) -> String {
     rolls
         .iter()
         .map(|group| {
-            let inner: Vec<String> = group.iter().map(|r| r.to_string()).collect();
+            let inner: Vec<String> = group.iter().map(ToString::to_string).collect();
             format!("[{}]", inner.join(", "))
         })
         .collect::<Vec<_>>()
@@ -350,6 +351,7 @@ pub fn format_rolls(rolls: &[Vec<u32>]) -> String {
 /// For keep groups, uses the kept count to compute bounds (not statistically
 /// exact for `kh`/`kl`, but gives useful ballpark figures).
 #[must_use]
+#[allow(clippy::cast_precision_loss)]
 pub fn roll_stats(expr: &DiceExpr) -> RollStats {
     let mut min = expr.flat_bonus;
     let mut max = expr.flat_bonus;
@@ -384,33 +386,32 @@ pub fn compute_distribution(expr: &DiceExpr, sims: u64, rng: &mut impl Rng) -> B
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
 pub fn render_distribution(expr: &DiceExpr, counts: &BTreeMap<i64, u64>, sims: u64) -> String {
+    const MAX_BAR: usize = 40;
+    const MAX_BAR_U128: u128 = 40;
+
     let mut out = format!("Distribution for {expr} ({sims} simulations):\n");
 
-    let (&min_val, &max_val) = match (counts.keys().next(), counts.keys().next_back()) {
-        (Some(lo), Some(hi)) => (lo, hi),
-        _ => return out,
+    let (Some(&min_val), Some(&max_val)) = (counts.keys().next(), counts.keys().next_back()) else {
+        return out;
     };
 
     let max_count = *counts.values().max().unwrap_or(&1);
     let label_width = max_val.to_string().len().max(min_val.to_string().len());
-    const MAX_BAR: usize = 40;
 
     for v in min_val..=max_val {
         let count = counts.get(&v).copied().unwrap_or(0);
         let pct = count as f64 / sims as f64 * 100.0;
         let bar_len = if max_count > 0 {
-            (count as f64 / max_count as f64 * MAX_BAR as f64).round() as usize
+            usize::try_from(
+                (u128::from(count) * MAX_BAR_U128 + u128::from(max_count) / 2)
+                    / u128::from(max_count),
+            )
+            .unwrap_or(MAX_BAR)
         } else {
             0
         };
         let bar: String = "\u{2588}".repeat(bar_len);
-        out.push_str(&format!(
-            " {:>width$} | {:>5.1}% {}\n",
-            v,
-            pct,
-            bar,
-            width = label_width,
-        ));
+        let _ = writeln!(out, " {v:>label_width$} | {pct:>5.1}% {bar}");
     }
 
     out
@@ -650,11 +651,11 @@ mod tests {
         let mut rng = seeded_rng();
         for _ in 0..100 {
             let (total, rolls) = roll_once(&expr, &mut rng);
-            assert!(total >= 2 && total <= 12);
+            assert!((2..=12).contains(&total));
             assert_eq!(rolls.len(), 1);
             assert_eq!(rolls[0].len(), 2);
             for &r in &rolls[0] {
-                assert!(r >= 1 && r <= 6);
+                assert!((1..=6).contains(&r));
             }
         }
     }
@@ -665,7 +666,7 @@ mod tests {
         let mut rng = seeded_rng();
         for _ in 0..100 {
             let (total, _) = roll_once(&expr, &mut rng);
-            assert!(total >= 11 && total <= 16);
+            assert!((11..=16).contains(&total));
         }
     }
 
@@ -683,7 +684,7 @@ mod tests {
             let sum: i64 = rolls[0].iter().map(|&r| i64::from(r)).sum();
             assert_eq!(total, sum);
             // Each die is within range
-            assert!(total >= 3 && total <= 18);
+            assert!((3..=18).contains(&total));
         }
     }
 
@@ -694,7 +695,7 @@ mod tests {
         for _ in 0..100 {
             let (total, rolls) = roll_once(&expr, &mut rng);
             assert_eq!(rolls[0].len(), 1);
-            assert!(total >= 1 && total <= 6);
+            assert!((1..=6).contains(&total));
         }
     }
 
@@ -714,7 +715,7 @@ mod tests {
         let mut rng = seeded_rng();
         for _ in 0..100 {
             let adv = roll_value(&expr, &mut rng);
-            assert!(adv >= 1 && adv <= 20);
+            assert!((1..=20).contains(&adv));
         }
     }
 
@@ -724,7 +725,7 @@ mod tests {
         let mut rng = seeded_rng();
         for _ in 0..100 {
             let dis = roll_value(&expr, &mut rng);
-            assert!(dis >= 1 && dis <= 20);
+            assert!((1..=20).contains(&dis));
         }
     }
 

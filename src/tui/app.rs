@@ -1,6 +1,6 @@
 use roll::{
-    DiceExpr, RollStats, compute_distribution, estimate_probability, exact_probability,
-    parse_expr, roll_stats, roll_verbose,
+    DiceExpr, RollStats, compute_distribution, estimate_probability, exact_probability, parse_expr,
+    roll_stats, roll_verbose,
 };
 use std::collections::BTreeMap;
 use std::time::Instant;

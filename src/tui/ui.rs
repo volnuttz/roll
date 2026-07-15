@@ -337,20 +337,18 @@ fn draw_inline_distribution(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(chart, chart_area);
 
     // Probability detail line
-    if has_target {
-        if let (Some(target), Some(prob)) = (dist.target, dist.target_prob) {
-            let prob_line = Line::from(vec![
-                Span::styled(
-                    format!("  P(result >= {target})  =  {:.2}%", prob * 100.0),
-                    Style::default().fg(ratatui::style::Color::Yellow),
-                ),
-                Span::styled(
-                    "   [/] move target",
-                    Style::default().fg(ratatui::style::Color::DarkGray),
-                ),
-            ]);
-            f.render_widget(Paragraph::new(prob_line), chunks[1]);
-        }
+    if has_target && let (Some(target), Some(prob)) = (dist.target, dist.target_prob) {
+        let prob_line = Line::from(vec![
+            Span::styled(
+                format!("  P(result >= {target})  =  {:.2}%", prob * 100.0),
+                Style::default().fg(ratatui::style::Color::Yellow),
+            ),
+            Span::styled(
+                "   [/] move target",
+                Style::default().fg(ratatui::style::Color::DarkGray),
+            ),
+        ]);
+        f.render_widget(Paragraph::new(prob_line), chunks[1]);
     }
 }
 
@@ -511,7 +509,10 @@ fn draw_help_overlay(f: &mut Frame, _app: &App) {
         ]),
         Line::from(vec![
             Span::styled("  [ / ]      ", theme::keybinding_key()),
-            Span::styled("Move distribution target (P >= N)", theme::keybinding_desc()),
+            Span::styled(
+                "Move distribution target (P >= N)",
+                theme::keybinding_desc(),
+            ),
         ]),
         Line::from(""),
         Line::from(vec![Span::styled(

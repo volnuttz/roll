@@ -54,7 +54,9 @@ pub fn bar_chart() -> Style {
 }
 
 pub fn bar_highlight() -> Style {
-    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+    Style::default()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD)
 }
 
 pub fn stats() -> Style {
