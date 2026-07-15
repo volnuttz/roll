@@ -5,6 +5,8 @@ inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+## 0.3.4
+
 ### Added
 
 - GitHub Release archives for Linux, macOS, and Windows, generated from
