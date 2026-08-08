@@ -53,7 +53,7 @@ number rolled keeps every die in that group.
 
 ## Probability modes
 
-`roll --prob <target>` calculates the chance of meeting or exceeding a target.
+`roll --prob-ge <target>` calculates the chance of meeting or exceeding a target.
 Simple expressions use an exact calculation. Expressions with advantage,
 disadvantage, or keep rules use Monte Carlo estimation instead; control its
 sample count with the `SIMS` environment variable.

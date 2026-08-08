@@ -18,6 +18,7 @@
 //! ```
 
 use rand::Rng;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::Write as _;
@@ -115,11 +116,33 @@ impl fmt::Display for DiceExpr {
 /// Theoretical statistics for a dice expression (min, max, mean).
 ///
 /// Computed analytically; does not account for advantage/disadvantage.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct RollStats {
     pub min: i64,
     pub max: i64,
     pub mean: f64,
+}
+
+/// A condition evaluated against a roll result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProbabilityQuery {
+    AtLeast(i64),
+    AtMost(i64),
+    Equal(i64),
+    InclusiveRange(i64, i64),
+}
+
+impl ProbabilityQuery {
+    /// Return whether `value` satisfies this query.
+    #[must_use]
+    pub fn matches(self, value: i64) -> bool {
+        match self {
+            Self::AtLeast(target) => value >= target,
+            Self::AtMost(target) => value <= target,
+            Self::Equal(target) => value == target,
+            Self::InclusiveRange(min, max) => (min..=max).contains(&value),
+        }
+    }
 }
 
 // ── Parsing ───────────────────────────────────────────────────────────────────
@@ -426,6 +449,15 @@ pub fn render_distribution(expr: &DiceExpr, counts: &BTreeMap<i64, u64>, sims: u
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
 pub fn exact_probability(expr: &DiceExpr, target: i64) -> Option<f64> {
+    exact_query_probability(expr, ProbabilityQuery::AtLeast(target))
+}
+
+/// Compute an exact probability for a result query via polynomial convolution.
+///
+/// Returns `None` for expressions with advantage/disadvantage or keep rules.
+#[must_use]
+#[allow(clippy::cast_precision_loss)]
+pub fn exact_query_probability(expr: &DiceExpr, query: ProbabilityQuery) -> Option<f64> {
     if expr.modifier != Modifier::None {
         return None;
     }
@@ -450,9 +482,11 @@ pub fn exact_probability(expr: &DiceExpr, target: i64) -> Option<f64> {
         }
     }
 
-    // P(dice_total + flat_bonus >= target)  ≡  P(dice_total >= target - flat_bonus)
-    let adjusted = target - expr.flat_bonus;
-    let prob: f64 = dist.range(adjusted..).map(|(_, &p)| p).sum();
+    let prob: f64 = dist
+        .iter()
+        .filter(|(value, _)| query.matches(**value + expr.flat_bonus))
+        .map(|(_, &p)| p)
+        .sum();
     Some(prob)
 }
 
@@ -460,8 +494,20 @@ pub fn exact_probability(expr: &DiceExpr, target: i64) -> Option<f64> {
 #[must_use]
 #[allow(clippy::cast_precision_loss)]
 pub fn estimate_probability(expr: &DiceExpr, target: i64, sims: u64, rng: &mut impl Rng) -> f64 {
+    estimate_query_probability(expr, ProbabilityQuery::AtLeast(target), sims, rng)
+}
+
+/// Estimate the probability of a result query using Monte Carlo simulation.
+#[must_use]
+#[allow(clippy::cast_precision_loss)]
+pub fn estimate_query_probability(
+    expr: &DiceExpr,
+    query: ProbabilityQuery,
+    sims: u64,
+    rng: &mut impl Rng,
+) -> f64 {
     let hits = (0..sims)
-        .filter(|_| roll_value(expr, rng) >= target)
+        .filter(|_| query.matches(roll_value(expr, rng)))
         .count();
     hits as f64 / sims as f64
 }
@@ -912,6 +958,27 @@ mod tests {
         let expr = parse_expr("2d6").unwrap();
         let p = exact_probability(&expr, 2).unwrap();
         assert!((p - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn exact_probability_equal_known_value() {
+        let expr = parse_expr("2d6").unwrap();
+        let p = exact_query_probability(&expr, ProbabilityQuery::Equal(7)).unwrap();
+        assert!((p - 1.0 / 6.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn exact_probability_at_most_known_value() {
+        let expr = parse_expr("d6").unwrap();
+        let p = exact_query_probability(&expr, ProbabilityQuery::AtMost(2)).unwrap();
+        assert!((p - 1.0 / 3.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn exact_probability_inclusive_range_known_value() {
+        let expr = parse_expr("d6").unwrap();
+        let p = exact_query_probability(&expr, ProbabilityQuery::InclusiveRange(2, 4)).unwrap();
+        assert!((p - 0.5).abs() < 1e-10);
     }
 
     // ---- ParseError display tests ----
