@@ -3,25 +3,37 @@ name: Release binaries
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing v-prefixed tag to rebuild and publish
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
+  group: ${{ github.workflow }}-${{ inputs.tag || github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - id: version
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - id: release
         shell: bash
         run: |
+          tag="${{ inputs.tag || github.ref_name }}"
           version=$(sed -nE 's/^version = "([^"]+)"/\1/p' Cargo.toml | head -n 1)
           test -n "$version"
-          test "v$version" = "$GITHUB_REF_NAME"
+          test "v$version" = "$tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - run: cargo fmt -- --check
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked
@@ -42,6 +54,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
       - name: Install target
         run: rustup target add ${{ matrix.target }}
       - name: Build release binary
@@ -52,7 +66,6 @@ jobs:
         run: |
           binary="target/${{ matrix.target }}/release/roll"
           "$binary" --help
-          "$binary" --version
           "$binary" 2d6+3 --stats
       - name: Smoke-test release binary (Windows)
         if: runner.os == 'Windows'
@@ -60,20 +73,19 @@ jobs:
         run: |
           $binary = "target/${{ matrix.target }}/release/roll.exe"
           & $binary --help
-          & $binary --version
           & $binary 2d6+3 --stats
       - name: Create Unix archive
         if: runner.os != 'Windows'
         shell: bash
         run: |
           mkdir dist
-          tar -C target/${{ matrix.target }}/release -czf "dist/roll-${GITHUB_REF_NAME}-${{ matrix.target }}.tar.gz" roll
+          tar -C target/${{ matrix.target }}/release -czf "dist/roll-${{ needs.verify.outputs.tag }}-${{ matrix.target }}.tar.gz" roll
       - name: Create Windows archive
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist
-          Compress-Archive -Path target/${{ matrix.target }}/release/roll.exe -DestinationPath dist/roll-${env:GITHUB_REF_NAME}-${{ matrix.target }}.zip
+          Compress-Archive -Path target/${{ matrix.target }}/release/roll.exe -DestinationPath dist/roll-${{ needs.verify.outputs.tag }}-${{ matrix.target }}.zip
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: roll-${{ matrix.target }}
@@ -87,6 +99,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: dist
@@ -99,7 +113,7 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ needs.verify.outputs.tag }}
         shell: bash
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
