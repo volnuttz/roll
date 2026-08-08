@@ -1,0 +1,42 @@
+name: Dependency audit
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    name: Dependency policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-audit
+            ~/.cargo/bin/cargo-deny
+          key: ${{ runner.os }}-${{ runner.arch }}-rust-1.88.0-security-audit-0.22.2-deny-0.18.4-${{ hashFiles('Cargo.lock') }}
+      - name: Install security tools
+        shell: bash
+        run: |
+          if ! cargo audit --version 2>/dev/null | grep -q '0.22.2'; then
+            cargo install cargo-audit --version 0.22.2 --locked
+          fi
+          if ! cargo deny --version 2>/dev/null | grep -q '0.18.4'; then
+            cargo install cargo-deny --version 0.18.4 --locked
+          fi
+      - run: cargo audit
+      - run: cargo deny check licenses bans sources

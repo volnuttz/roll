@@ -5,7 +5,8 @@ review.
 
 ## Local setup
 
-Install the current stable Rust toolchain, clone the repository, then run:
+The repository pins its minimum supported Rust version (MSRV) in
+`rust-toolchain.toml`. Rustup selects it automatically after cloning:
 
 ```sh
 cargo build
@@ -26,10 +27,15 @@ Run the same checks enforced by CI:
 
 ```sh
 cargo fmt -- --check
-cargo clippy --all-targets -- -D warnings
-cargo test
-cargo package --no-verify
+cargo clippy --locked --all-targets -- -D warnings
+cargo test --locked
+cargo package --locked
 ```
+
+CI also runs tests on Linux, macOS, Windows, and the current stable Rust
+release. Coverage is measured with `cargo-llvm-cov`; the 33% line floor is a
+regression guard based on the measured whole-application baseline, not a
+coverage target.
 
 ## Guidelines
 

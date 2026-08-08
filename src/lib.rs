@@ -103,10 +103,10 @@ impl fmt::Display for DiceExpr {
                 Keep::Lowest(n) => write!(f, "kl{n}")?,
             }
         }
-        if self.flat_bonus > 0 {
-            write!(f, "+{}", self.flat_bonus)?;
-        } else if self.flat_bonus < 0 {
-            write!(f, "{}", self.flat_bonus)?;
+        match self.flat_bonus.cmp(&0) {
+            std::cmp::Ordering::Greater => write!(f, "+{}", self.flat_bonus)?,
+            std::cmp::Ordering::Less => write!(f, "{}", self.flat_bonus)?,
+            std::cmp::Ordering::Equal => {}
         }
         Ok(())
     }

@@ -8,10 +8,9 @@
 
 ## One-time repository setup
 
-The `release.yml` workflow requires the repository Actions setting **Workflow
-permissions** to allow read and write access. It uses the built-in
-`GITHUB_TOKEN` with `contents: write`; no personal access token is needed for
-GitHub Releases.
+The `release.yml` workflow defaults to read-only access. Only its final GitHub
+Release job receives `contents: write`, using the built-in `GITHUB_TOKEN`; no
+personal access token is needed.
 
 Keep crates.io publishing credentials outside the repository. A maintainer may
 publish locally with Cargo credentials, or a future protected publishing
@@ -19,32 +18,36 @@ workflow can use a repository environment and trusted publishing.
 
 ## Release checklist
 
-1. Update `version` in `Cargo.toml`, `Cargo.lock` via Cargo if needed, and user
-   documentation or changelog entries for the release.
-2. On the final release commit, run:
+1. Create a release branch and update `version` in `Cargo.toml`, regenerate
+   `Cargo.lock` through Cargo if needed, and update the Unreleased changelog.
+2. Open a pull request into `main`; do not bypass its required quality,
+   dependency-policy, and platform checks.
+3. On the final release commit, run:
 
    ```sh
    cargo fmt -- --check
-   cargo clippy --all-targets -- -D warnings
-   cargo test
-   cargo package
-   cargo publish --dry-run
+   cargo clippy --locked --all-targets -- -D warnings
+   cargo test --locked
+   cargo package --locked
+   cargo publish --dry-run --locked
    ```
 
-3. Publish the verified package:
+4. Merge the approved pull request and verify the required workflows passed for
+   the exact merged commit.
+5. Publish the verified package from that commit:
 
    ```sh
-   cargo publish
+   cargo publish --locked
    ```
 
-4. Create and push the matching annotated tag. For version `0.3.3`, use:
+6. Create and push the matching annotated tag. For version `0.3.5`, use:
 
    ```sh
-   git tag -a v0.3.3 -m "rollcli v0.3.3"
-   git push origin v0.3.3
+   git tag -a v0.3.5 -m "rollcli v0.3.5"
+   git push origin v0.3.5
    ```
 
-5. Watch the **Release binaries** GitHub Actions workflow. It validates the
+7. Watch the **Release binaries** GitHub Actions workflow. It validates the
    tag/version match, tests the package, then builds native archives for:
 
    | Platform | Archive |
@@ -53,9 +56,12 @@ workflow can use a repository environment and trusted publishing.
    | macOS Apple Silicon | `roll-v<VERSION>-aarch64-apple-darwin.tar.gz` |
    | Windows x86_64 | `roll-v<VERSION>-x86_64-pc-windows-msvc.zip` |
 
-6. Confirm the generated GitHub Release has those three archives and
-   `SHA256SUMS.txt`; download and run the appropriate archive before announcing
-   the release.
+8. Confirm the generated GitHub Release has those three archives and
+   `SHA256SUMS.txt`. Download the assets, verify archive contents and checksums,
+   and run the appropriate binary before announcing the release.
+
+Never move, delete, or recreate a published release tag. Re-run the workflow
+for the same tag when repairing a release-only failure.
 
 ## Failure handling
 

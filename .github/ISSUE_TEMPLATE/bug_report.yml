@@ -1,0 +1,32 @@
+name: Bug report
+description: Report reproducible incorrect rollcli behavior
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include the command or dice expression and actual output.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: roll version
+      placeholder: Output of roll --version
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: Linux, macOS, or Windows and version
+    validations:
+      required: true

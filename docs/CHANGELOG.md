@@ -5,6 +5,11 @@ inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+### Changed
+
+- Pinned Rust 1.88 as the MSRV and added hardened quality, dependency-policy,
+  coverage, and release automation.
+
 ## 0.3.5
 
 ### Changed
