@@ -67,5 +67,13 @@ for the same tag when repairing a release-only failure.
 
 If crates.io publishing succeeds but the binary workflow fails, fix the
 workflow or release-only packaging issue and re-run the workflow for the same
-tag. Do not republish the crate. If the tag does not match `Cargo.toml`, the
-workflow deliberately stops before creating a release.
+tag. Do not republish the crate. After the workflow fix is merged to `main`, use
+the **Run workflow** action with the existing tag, or run:
+
+```sh
+gh workflow run release.yml -f tag=v0.4.0
+```
+
+Manual retries check out the immutable tag rather than building from `main`.
+If the tag does not match `Cargo.toml`, the workflow deliberately stops before
+creating a release.
