@@ -5,6 +5,8 @@ inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+## 0.4.0 - 2026-08-08
+
 ### Added
 
 - Added exact-value, at-most, and inclusive-range probability queries.
