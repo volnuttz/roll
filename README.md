@@ -50,26 +50,50 @@ roll 2d6+3 --stats
 
 ### Probability estimation
 
-Use `--prob` to calculate the chance of rolling at least a given value.
+Use `--prob-ge` to calculate the chance of rolling at least a given value.
 For simple expressions (no advantage/disadvantage, no keep), the result is
 computed **exactly** via polynomial convolution; otherwise it falls back to
 Monte Carlo simulation:
 
 ```
-roll d20 --prob 15
+roll d20 --prob-ge 15
 # P(1d20 >= 15) = 30.0000% (exact)
 
-roll adv d20 --prob 15
+roll adv d20 --prob-ge 15
 # P(adv 1d20 >= 15) = 50.97% (509700 / 1000000 sims)
 ```
 
 The number of simulations defaults to 1,000,000 and can be changed with the `SIMS`
-environment variable (e.g. `SIMS=500000 roll d20 --prob 15`).
+environment variable (e.g. `SIMS=500000 roll d20 --prob-ge 15`).
+
+Additional queries can calculate the probability of an exact result, a result
+at or below a target, or a result in an inclusive range:
+
+```sh
+roll 2d6 --prob-eq 7       # P(2d6 == 7)
+roll 2d6 --prob-le 4       # P(2d6 <= 4)
+roll 2d6 --prob-range 6..9 # P(2d6 in 6..9)
+```
+
+### JSON output
+
+Use `--json` with rolls, statistics, probability queries, or distributions to
+emit one machine-readable JSON document:
+
+```sh
+roll 2d6+3 -n 2 --stats --json
+roll d20 --prob-eq 20 --json
+roll 2d6 --dist --json
+```
+
+Probability values in JSON are fractions between `0.0` and `1.0`; `percent`
+contains the corresponding percentage. Simulated results also include the
+simulation count.
 
 ### Distribution histogram
 
 Use `--dist` to see the full probability distribution as an ASCII histogram.
-Cannot be combined with `--prob`.
+Cannot be combined with a probability query.
 
 ```
 roll 2d6 --dist
@@ -118,7 +142,7 @@ roll --delete attack
 ```
 
 Preset names are resolved case-insensitively before the input is parsed as a
-dice expression. Any roll option (`--times`, `--stats`, `--prob`, `--dist`)
+dice expression. Any roll option (`--times`, `--stats`, probability queries, `--dist`)
 works normally with presets.
 
 ### Interactive TUI
